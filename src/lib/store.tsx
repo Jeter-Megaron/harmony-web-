@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { computeCiclo, resolverFonte as resolver } from "@/rules";
 import type { Config, Lancamento, FonteId, CategoriaRegra, CicloResult } from "@/rules";
 import { config as seedConfig, lancamentos as seedLancamentos, rendaMes as seedRenda, MES_ATUAL, MESES } from "@/lib/data";
@@ -17,6 +18,8 @@ export interface RendaEntry {
 }
 
 type RendaMes = Record<string, Partial<Record<FonteId, number>>>;
+type SavedState = Partial<{ config: Config; lancamentos: Lancamento[]; rendaMes: RendaMes; mesAtual: string }>;
+const normLanc = (xs: Lancamento[]) => xs.map((l) => ({ ...l, pago: l.pago ?? true, mes: l.mes ?? MES_ATUAL }));
 
 interface Store {
   config: Config;
@@ -52,37 +55,59 @@ const Ctx = createContext<Store | null>(null);
 const ORDER: FonteId[] = ["salario", "beneficio", "vale", "outros"];
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
+  const { isLoaded, user } = useUser();
   const [config, setConfig] = useState<Config>(seedConfig);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(seedLancamentos);
   const [rendaMes, setRendaMes] = useState<RendaMes>(seedRenda);
   const [mesAtual, setMesAtual] = useState<string>(MES_ATUAL);
   const [hydrated, setHydrated] = useState(false);
+  const [serverReady, setServerReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const userRef = useRef(user);
+  userRef.current = user;
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // carrega o estado do usuário: metadados do Clerk (fonte da verdade) → cache local → semente
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const p = JSON.parse(raw) as Partial<{ config: Config; lancamentos: Lancamento[]; rendaMes: RendaMes; mesAtual: string }>;
-        if (p.config) setConfig(p.config);
-        if (p.lancamentos) setLancamentos(p.lancamentos.map((l) => ({ ...l, pago: l.pago ?? true, mes: l.mes ?? MES_ATUAL })));
-        if (p.rendaMes) setRendaMes(p.rendaMes);
-        if (p.mesAtual) setMesAtual(p.mesAtual);
+    if (!isLoaded) return;
+    if (user && !serverReady) {
+      let saved = user.unsafeMetadata?.harmony as SavedState | undefined;
+      if (!saved) {
+        try {
+          const raw = localStorage.getItem(`${KEY}-${user.id}`);
+          if (raw) saved = JSON.parse(raw) as SavedState;
+        } catch {
+          /* ignore */
+        }
       }
-    } catch {
-      /* ignore */
+      if (saved && typeof saved === "object") {
+        if (saved.config) setConfig(saved.config);
+        if (saved.lancamentos) setLancamentos(normLanc(saved.lancamentos));
+        if (saved.rendaMes) setRendaMes(saved.rendaMes);
+        if (saved.mesAtual) setMesAtual(saved.mesAtual);
+      }
+      setServerReady(true);
     }
     setHydrated(true);
-  }, []);
+  }, [isLoaded, user, serverReady]);
 
+  // salva (debounced) nos metadados do Clerk + cache local por usuário
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !serverReady) return;
+    const u = userRef.current;
+    if (!u) return;
+    const snapshot = { config, lancamentos, rendaMes, mesAtual };
     try {
-      localStorage.setItem(KEY, JSON.stringify({ config, lancamentos, rendaMes, mesAtual }));
+      localStorage.setItem(`${KEY}-${u.id}`, JSON.stringify(snapshot));
     } catch {
       /* ignore */
     }
-  }, [config, lancamentos, rendaMes, mesAtual, hydrated]);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const uu = userRef.current;
+      void uu?.update({ unsafeMetadata: { ...(uu.unsafeMetadata ?? {}), harmony: snapshot } }).catch(() => {});
+    }, 1200);
+  }, [config, lancamentos, rendaMes, mesAtual, hydrated, serverReady]);
 
   // config efetiva do mês: entradaMensal = override do mês, senão padrão (se repete) ou 0
   const effectiveConfig = useMemo<Config>(
