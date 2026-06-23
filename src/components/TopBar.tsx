@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon, type IconName } from "./icons";
+import { useHarmony } from "@/lib/store";
 
 // Barra superior — cada página monta a sua (título/subtítulo + ações próprias), fiel aos frames do Figma.
 export function TopBar({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) {
@@ -18,10 +19,20 @@ export function TopBar({ title, subtitle, children }: { title: string; subtitle:
 const glass = "border border-white/10 bg-surface/55 backdrop-blur-md";
 
 export function MonthPill() {
+  const { mesAtual, setMesAtual, meses } = useHarmony();
   return (
-    <div className={`flex items-center gap-1.5 rounded-[10px] px-3 py-2.5 ${glass}`}>
-      <span className="text-xs font-medium text-ink">Junho 2026</span>
-      <span className="size-2.5 rounded-full bg-accent/70 shadow-[0_0_6px_var(--color-accent)]" />
+    <div className={`relative flex items-center rounded-[10px] ${glass}`}>
+      <select
+        value={mesAtual}
+        onChange={(e) => setMesAtual(e.target.value)}
+        aria-label="Mês de referência"
+        className="cursor-pointer appearance-none bg-transparent py-2.5 pl-3 pr-7 text-xs font-medium text-ink outline-none"
+      >
+        {meses.map((m) => (
+          <option key={m} value={m} className="bg-surface-2">{m}</option>
+        ))}
+      </select>
+      <span className="pointer-events-none absolute right-3 text-[10px] text-sub">▾</span>
     </div>
   );
 }

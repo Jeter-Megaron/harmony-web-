@@ -19,10 +19,11 @@ const HEAD: Col[] = [
 const ORDER: FonteId[] = ["beneficio", "vale", "salario", "outros"];
 
 export default function Extrato() {
-  const { lancamentos, config, resolverFonte, ciclo, openModal } = useHarmony();
+  const { lancamentos, config, resolverFonte, ciclo, openModal, mesAtual } = useHarmony();
   const [view, setView] = useState("Por fonte");
   const fonteNome = (id: string) => config.fontes.find((f) => f.id === id)?.nome ?? "";
-  const pagosDe = (id: FonteId) => lancamentos.filter((l) => l.pago && resolverFonte(l.categoria, l.fonteOverride) === id);
+  const pagosDe = (id: FonteId) =>
+    lancamentos.filter((l) => l.pago && l.mes === mesAtual && resolverFonte(l.categoria, l.fonteOverride) === id);
 
   function headerChip(id: FonteId) {
     const f = ciclo.fontes[id];
@@ -32,12 +33,12 @@ export default function Extrato() {
     return null;
   }
 
-  const flat = [...lancamentos].filter((l) => l.pago).sort((a, b) => a.data.localeCompare(b.data));
+  const flat = [...lancamentos].filter((l) => l.pago && l.mes === mesAtual).sort((a, b) => a.data.localeCompare(b.data));
 
   if (flat.length === 0) {
     return (
       <div>
-        <TopBar title="Extrato" subtitle="Todos os lançamentos de junho 2026">
+        <TopBar title="Extrato" subtitle={`Lançamentos de ${mesAtual}`}>
           <MonthPill />
         </TopBar>
         <EmptyState
@@ -92,7 +93,7 @@ export default function Extrato() {
 
   return (
     <div>
-      <TopBar title="Extrato" subtitle="Todos os lançamentos de junho 2026">
+      <TopBar title="Extrato" subtitle={`Lançamentos de ${mesAtual}`}>
         <Segmented options={["Por fonte", "Por data"]} value={view} onChange={setView} />
         <MonthPill />
       </TopBar>

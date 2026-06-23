@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { computeCiclo, resolverFonte as resolver } from "@/rules";
 import type { Config, Lancamento, FonteId, CategoriaRegra, CicloResult } from "@/rules";
-import { config as seedConfig, lancamentos as seedLancamentos, rendaMes as seedRenda, MES_ATUAL } from "@/lib/data";
+import { config as seedConfig, lancamentos as seedLancamentos, rendaMes as seedRenda, MES_ATUAL, MESES } from "@/lib/data";
 
 const KEY = "harmony-state-v3";
 
@@ -65,7 +65,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         const p = JSON.parse(raw) as Partial<{ config: Config; lancamentos: Lancamento[]; rendaMes: RendaMes; mesAtual: string }>;
         if (p.config) setConfig(p.config);
-        if (p.lancamentos) setLancamentos(p.lancamentos.map((l) => ({ ...l, pago: l.pago ?? true })));
+        if (p.lancamentos) setLancamentos(p.lancamentos.map((l) => ({ ...l, pago: l.pago ?? true, mes: l.mes ?? MES_ATUAL })));
         if (p.rendaMes) setRendaMes(p.rendaMes);
         if (p.mesAtual) setMesAtual(p.mesAtual);
       }
@@ -96,10 +96,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [config, rendaMes, mesAtual],
   );
 
-  // só lançamentos pagos contam no ciclo (saldos, cobertura, totais, relatórios)
-  const ciclo = useMemo(() => computeCiclo(effectiveConfig, lancamentos.filter((l) => l.pago)), [effectiveConfig, lancamentos]);
+  // só lançamentos pagos do mês selecionado contam no ciclo (saldos, cobertura, totais, relatórios)
+  const ciclo = useMemo(
+    () => computeCiclo(effectiveConfig, lancamentos.filter((l) => l.pago && (l.mes ?? MES_ATUAL) === mesAtual)),
+    [effectiveConfig, lancamentos, mesAtual],
+  );
 
-  const meses = useMemo(() => Object.keys(rendaMes), [rendaMes]);
+  const meses = MESES;
 
   const rendaEntries = useMemo<RendaEntry[]>(() => {
     const rows: RendaEntry[] = [];

@@ -31,6 +31,7 @@ export interface Lancamento {
   tipo?: 'gasto' | 'entrada';   // default: 'gasto'
   fonteOverride?: FonteId;      // só vale para categoria NÃO-travada
   pago?: boolean;               // só conta no ciclo quando pago (confirmado)
+  mes?: string;                 // mês de referência (ex.: "Junho 2026")
 }
 
 export interface Config {

@@ -13,7 +13,7 @@ import { Popconfirm } from "@/components/Modal";
 import { Pagination } from "@/components/Pagination";
 import type { FonteId } from "@/rules";
 
-const COLS = "grid-cols-[34px_72px_minmax(0,1fr)_120px_140px_92px_56px_70px]";
+const COLS = "grid-cols-[36px_72px_minmax(0,1fr)_120px_156px_96px_60px_78px]";
 const HEAD: Col[] = [
   { label: "#" },
   { label: "Data" },
@@ -27,7 +27,7 @@ const HEAD: Col[] = [
 const PAGE = 8;
 
 export default function Lancamentos() {
-  const { lancamentos, config, resolverFonte, removeLancamento, togglePago, ciclo, openModal } = useHarmony();
+  const { lancamentos, config, resolverFonte, removeLancamento, togglePago, ciclo, openModal, mesAtual } = useHarmony();
   const fonteNome = (id: string) => config.fontes.find((f) => f.id === id)?.nome ?? "";
 
   const [query, setQuery] = useState("");
@@ -35,30 +35,30 @@ export default function Lancamentos() {
   const [confirm, setConfirm] = useState<number | null>(null);
   const q = query.trim().toLowerCase();
 
-  useEffect(() => setPage(1), [q]);
+  useEffect(() => setPage(1), [q, mesAtual]);
 
-  const visiveis = lancamentos
-    .map((l, i) => ({ l, i }))
-    .filter(({ l }) => !q || l.descricao.toLowerCase().includes(q) || l.categoria.toLowerCase().includes(q));
+  // lançamentos do mês selecionado (preservando o índice global para ações)
+  const doMes = lancamentos.map((l, i) => ({ l, i })).filter(({ l }) => l.mes === mesAtual);
+  const visiveis = doMes.filter(({ l }) => !q || l.descricao.toLowerCase().includes(q) || l.categoria.toLowerCase().includes(q));
   const pageRows = visiveis.slice((page - 1) * PAGE, page * PAGE);
 
   const recapOrder: FonteId[] = ["beneficio", "vale", "salario", "outros"];
   const recap = recapOrder
     .map((id) => ({ id, nome: fonteNome(id), f: ciclo.fontes[id] }))
     .filter((r) => r.f && (r.f.saidasPretendidas > 0 || r.f.saidasReais > 0));
-  const pendentes = lancamentos.filter((l) => !l.pago);
-  const pendenteTotal = pendentes.reduce((s, l) => s + l.valor, 0);
+  const pendentes = doMes.filter(({ l }) => !l.pago);
+  const pendenteTotal = pendentes.reduce((s, { l }) => s + l.valor, 0);
 
-  if (lancamentos.length === 0) {
+  if (doMes.length === 0) {
     return (
       <div>
-        <TopBar title="Lançamentos" subtitle="Junho 2026 · cadastre cada gasto como numa planilha">
+        <TopBar title="Lançamentos" subtitle="Cadastre cada gasto do mês como numa planilha">
           <MonthPill />
           <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
         </TopBar>
         <EmptyState
-          title="Nenhum lançamento ainda"
-          description="Cadastre seu primeiro gasto do mês para acompanhar saldos e cobertura por fonte."
+          title="Nenhum lançamento neste mês"
+          description="Cadastre um gasto para este mês e acompanhe saldos e cobertura por fonte. Você pode trocar o mês ali em cima."
           primaryLabel="+ Novo lançamento"
           onPrimary={openModal}
         />
@@ -68,7 +68,7 @@ export default function Lancamentos() {
 
   return (
     <div>
-      <TopBar title="Lançamentos" subtitle="Junho 2026 · cadastre cada gasto como numa planilha">
+      <TopBar title="Lançamentos" subtitle="Cadastre cada gasto do mês como numa planilha">
         <MonthPill />
         <div className="flex items-center gap-2 rounded-[10px] border border-white/10 bg-surface/55 px-3 backdrop-blur-md focus-within:border-accent/60">
           <Icon name="search" size={16} className="text-ter" />
@@ -94,18 +94,18 @@ export default function Lancamentos() {
       <GlassCard className="overflow-hidden">
         <TableHead grid={COLS} cols={HEAD} />
 
-        {pageRows.map(({ l, i }) => {
+        {pageRows.map(({ l, i }, idx) => {
           const fid = resolverFonte(l.categoria, l.fonteOverride);
           const regra = config.categorias.find((c) => c.categoria === l.categoria);
           return (
-            <TRow key={i} grid={COLS} index={i} muted={!l.pago}>
-              <span className="font-mono text-ter">{i + 1}</span>
+            <TRow key={i} grid={COLS} index={idx} muted={!l.pago}>
+              <span className="font-mono text-ter">{(page - 1) * PAGE + idx + 1}</span>
               <span className="font-mono text-sub">{l.data}</span>
               <span className="truncate font-medium">{l.descricao}</span>
               <span className="truncate text-sub">{l.categoria}</span>
-              <span className="flex items-center gap-1.5 text-sub">
+              <span className="flex min-w-0 items-center gap-1.5 text-sub">
                 <span className="truncate">{fonteNome(fid)}</span>
-                {regra?.travada && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[9px] text-ter">trava</span>}
+                {regra?.travada && <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[9px] text-ter">trava</span>}
               </span>
               <span className="text-right font-mono font-bold">{brl(l.valor)}</span>
               <span>
@@ -120,7 +120,7 @@ export default function Lancamentos() {
                 >
                   <MaterialIcon name="check" size={16} />
                 </IconButton>
-                <IconButton size={30} label="Excluir" onClick={() => setConfirm(i)}>
+                <IconButton size={30} label="Excluir lançamento" onClick={() => setConfirm(i)}>
                   <MaterialIcon name="delete" size={16} className="text-neg" />
                 </IconButton>
               </span>
@@ -134,10 +134,10 @@ export default function Lancamentos() {
             onClick={openModal}
             className={`grid ${COLS} w-full items-center gap-3 border-b border-white/5 px-[18px] py-2.5 text-left text-sm text-ter transition hover:bg-white/[0.03]`}
           >
-            <span className="font-mono">{lancamentos.length + 1}</span>
+            <span className="font-mono">{doMes.length + 1}</span>
             <span className="font-mono">dd/mm</span>
-            <span>+ adicionar gasto…</span>
-            <span>Categoria</span>
+            <span className="truncate">+ adicionar gasto…</span>
+            <span className="truncate">Categoria</span>
             <span>—</span>
             <span className="text-right font-mono">R$ 0,00</span>
             <span />
@@ -151,7 +151,7 @@ export default function Lancamentos() {
         <div className={`grid ${COLS} items-center gap-3 border-t border-white/10 bg-surface-2/30 px-[18px] py-3 text-sm`}>
           <span />
           <span />
-          <span className="font-semibold">Total pago do mês</span>
+          <span className="truncate font-semibold">Total pago do mês</span>
           <span />
           <span />
           <span className="text-right font-mono font-bold text-ink">{brl(ciclo.totalSaidas)}</span>

@@ -8,15 +8,16 @@ import { EmptyState } from "@/components/EmptyState";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
-  const { ciclo, config, lancamentos, resolverFonte, openModal } = useHarmony();
+  const { ciclo, config, lancamentos, resolverFonte, openModal, mesAtual } = useHarmony();
   const router = useRouter();
   const fonteNome = (id: string) => config.fontes.find((f) => f.id === id)?.nome ?? "";
-  const recentes = [...lancamentos].filter((l) => l.pago).reverse();
+  const doMes = lancamentos.filter((l) => l.mes === mesAtual);
+  const recentes = [...doMes].filter((l) => l.pago).reverse();
 
-  if (lancamentos.length === 0) {
+  if (doMes.length === 0) {
     return (
       <div>
-        <TopBar title="Painel financeiro" subtitle="Visão do mês de junho 2026">
+        <TopBar title="Painel financeiro" subtitle={`Visão de ${mesAtual}`}>
           <MonthPill />
           <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
         </TopBar>
@@ -34,7 +35,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <TopBar title="Painel financeiro" subtitle="Visão do mês de junho 2026">
+      <TopBar title="Painel financeiro" subtitle={`Visão de ${mesAtual}`}>
         <MonthPill />
         <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
       </TopBar>

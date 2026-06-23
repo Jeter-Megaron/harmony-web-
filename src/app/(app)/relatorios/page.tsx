@@ -31,7 +31,7 @@ function LegendDot({ className }: { className: string }) {
 }
 
 export default function Relatorios() {
-  const { ciclo, config, lancamentos, openModal } = useHarmony();
+  const { ciclo, config, lancamentos, openModal, mesAtual } = useHarmony();
   const [scope, setScope] = useState("Mês");
   const sobrou = ciclo.totalEntradas - ciclo.totalSaidas;
   const nCats = Object.keys(ciclo.porCategoria).length;
@@ -59,10 +59,10 @@ export default function Relatorios() {
     f("outros").saidasReais > 0 || f("outros").disponivel > 0 ? "Outros: com renda avulsa no mês." : "Outros: sem renda avulsa neste mês.",
   ];
 
-  if (lancamentos.length === 0) {
+  if (lancamentos.filter((l) => l.mes === mesAtual).length === 0) {
     return (
       <div>
-        <TopBar title="Relatórios" subtitle="Como o mês de junho 2026 se comportou">
+        <TopBar title="Relatórios" subtitle={`Como ${mesAtual} se comportou`}>
           <MonthPill />
         </TopBar>
         <EmptyState
@@ -77,7 +77,7 @@ export default function Relatorios() {
 
   return (
     <div>
-      <TopBar title="Relatórios" subtitle="Como o mês de junho 2026 se comportou">
+      <TopBar title="Relatórios" subtitle={`Como ${mesAtual} se comportou`}>
         <Segmented options={["Mês", "Ano"]} value={scope} onChange={setScope} />
         <MonthPill />
       </TopBar>

@@ -28,6 +28,7 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
+      title={label}
       onClick={onClick}
       style={{ width: size, height: size }}
       className={`grid shrink-0 place-items-center rounded-[10px] transition ${VARIANTS[variant]}`}

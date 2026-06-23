@@ -4,14 +4,23 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useHarmony } from "@/lib/store";
 import { CATEGORIAS } from "@/lib/data";
+import { Toggle } from "@/components/Field";
 import type { FonteId } from "@/rules";
 
 const inputCls =
   "w-full rounded-lg border border-white/10 bg-surface-2/70 px-3 py-2 text-sm text-ink outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/40";
 
+const MES_NOMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
 function ddmm(iso: string) {
   const [y, m, d] = iso.split("-");
   return d && m ? `${d}/${m}/${y}` : iso;
+}
+
+function mesLabel(iso: string) {
+  const [y, m] = iso.split("-").map(Number);
+  const nome = MES_NOMES[(m || 1) - 1];
+  return nome ? `${nome} ${y}` : iso;
 }
 
 export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
@@ -21,6 +30,7 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
   const [categoria, setCategoria] = useState(CATEGORIAS[0]);
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [override, setOverride] = useState<FonteId | "">("");
+  const [pago, setPago] = useState(false);
 
   const regra = config.categorias.find((c) => c.categoria === categoria);
   const travada = !!(regra && regra.travada);
@@ -35,11 +45,12 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
     if (!canSave) return;
     addLancamento({
       data: ddmm(data),
+      mes: mesLabel(data),
       descricao: descricao.trim(),
       categoria,
       valor: valorNum,
       tipo: "gasto",
-      pago: false,
+      pago,
       fonteOverride: travada ? undefined : override || undefined,
     });
     onClose();
@@ -97,6 +108,14 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
                 ))}
               </select>
             )}
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-surface-2/40 px-3 py-2">
+            <div className="leading-tight">
+              <span className="text-sm font-medium text-ink">Pago</span>
+              <p className="text-[10px] text-ter">Marque se já foi pago — só assim entra nos saldos.</p>
+            </div>
+            <Toggle on={pago} onClick={() => setPago((v) => !v)} label="Pago" />
           </div>
 
           <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-[11px] leading-snug text-[#b9a8ff]">
