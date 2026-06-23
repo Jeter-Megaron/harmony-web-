@@ -1,6 +1,7 @@
 "use client";
 
-// Icon Button — quadrado, mesma altura do botão (41px por padrão); variantes glass/primary/danger.
+// Icon Button — quadrado, mesma altura do botão (41px por padrão); variantes glass/primary/danger/success.
+// Tooltip estilizado no hover (aparece acima do botão).
 type Variant = "ghost" | "primary" | "danger" | "success";
 
 const VARIANTS: Record<Variant, string> = {
@@ -25,15 +26,22 @@ export function IconButton({
   label: string;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      style={{ width: size, height: size }}
-      className={`grid shrink-0 place-items-center rounded-[10px] transition ${VARIANTS[variant]}`}
-    >
-      {children}
-    </button>
+    <span className="group/ib relative inline-flex">
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        style={{ width: size, height: size }}
+        className={`grid shrink-0 place-items-center rounded-[10px] transition ${VARIANTS[variant]}`}
+      >
+        {children}
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full right-0 z-50 mb-1.5 whitespace-nowrap rounded-md border border-white/10 bg-surface-2 px-2 py-1 text-[11px] font-medium text-ink opacity-0 shadow-[0_6px_16px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover/ib:opacity-100"
+      >
+        {label}
+      </span>
+    </span>
   );
 }
