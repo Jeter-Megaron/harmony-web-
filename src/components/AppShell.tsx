@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-3">
           <UserButton />
           <button
-            onClick={openModal}
+            onClick={() => openModal()}
             aria-label="Novo lançamento"
             className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-r from-[#5b3fd6] to-[#7e5bea] text-lg font-bold text-white shadow-[0_0_16px_rgba(139,108,255,0.5)]"
           >

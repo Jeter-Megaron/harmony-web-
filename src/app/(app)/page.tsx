@@ -19,13 +19,13 @@ export default function Dashboard() {
       <div>
         <TopBar title="Painel financeiro" subtitle={`Visão de ${mesAtual}`}>
           <MonthPill />
-          <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
+          <PrimaryButton onClick={() => openModal()}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
         </TopBar>
         <EmptyState
           title="Tudo zerado por aqui"
           description="Defina a renda do mês e registre seus gastos para ver saldos, cobertura por fonte e relatórios."
           primaryLabel="+ Novo lançamento"
-          onPrimary={openModal}
+          onPrimary={() => openModal()}
           secondaryLabel="Definir renda do mês"
           onSecondary={() => router.push("/renda")}
         />
@@ -37,7 +37,7 @@ export default function Dashboard() {
     <div>
       <TopBar title="Painel financeiro" subtitle={`Visão de ${mesAtual}`}>
         <MonthPill />
-        <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
+        <PrimaryButton onClick={() => openModal()}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
       </TopBar>
 
       <div className="space-y-5">

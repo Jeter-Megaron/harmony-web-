@@ -13,7 +13,7 @@ import { Popconfirm } from "@/components/Modal";
 import { Pagination } from "@/components/Pagination";
 import type { FonteId } from "@/rules";
 
-const COLS = "grid-cols-[36px_72px_minmax(0,1fr)_120px_156px_96px_60px_78px]";
+const COLS = "grid-cols-[32px_96px_minmax(0,1fr)_112px_140px_100px_56px_112px]";
 const HEAD: Col[] = [
   { label: "#" },
   { label: "Data" },
@@ -54,13 +54,13 @@ export default function Lancamentos() {
       <div>
         <TopBar title="Lançamentos" subtitle="Cadastre cada gasto do mês como numa planilha">
           <MonthPill />
-          <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
+          <PrimaryButton onClick={() => openModal()}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
         </TopBar>
         <EmptyState
           title="Nenhum lançamento neste mês"
           description="Cadastre um gasto para este mês e acompanhe saldos e cobertura por fonte. Você pode trocar o mês ali em cima."
           primaryLabel="+ Novo lançamento"
-          onPrimary={openModal}
+          onPrimary={() => openModal()}
         />
       </div>
     );
@@ -80,7 +80,7 @@ export default function Lancamentos() {
             className="h-[41px] w-44 bg-transparent text-xs text-ink outline-none placeholder:text-ter"
           />
         </div>
-        <PrimaryButton onClick={openModal}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
+        <PrimaryButton onClick={() => openModal()}>+&nbsp;&nbsp;Novo lançamento</PrimaryButton>
       </TopBar>
 
       {/* hint */}
@@ -99,8 +99,8 @@ export default function Lancamentos() {
           const regra = config.categorias.find((c) => c.categoria === l.categoria);
           return (
             <TRow key={i} grid={COLS} index={idx} muted={!l.pago}>
-              <span className="font-mono text-ter">{(page - 1) * PAGE + idx + 1}</span>
-              <span className="font-mono text-sub">{l.data}</span>
+              <span className="truncate font-mono text-ter">{(page - 1) * PAGE + idx + 1}</span>
+              <span className="truncate font-mono text-sub">{l.data}</span>
               <span className="truncate font-medium">{l.descricao}</span>
               <span className="truncate text-sub">{l.categoria}</span>
               <span className="flex min-w-0 items-center gap-1.5 text-sub">
@@ -120,6 +120,9 @@ export default function Lancamentos() {
                 >
                   <MaterialIcon name="check" size={16} />
                 </IconButton>
+                <IconButton size={30} label="Editar lançamento" onClick={() => openModal(i)}>
+                  <MaterialIcon name="edit" size={16} className="text-[#b9a8ff]" />
+                </IconButton>
                 <IconButton size={30} label="Excluir lançamento" onClick={() => setConfirm(i)}>
                   <MaterialIcon name="delete" size={16} className="text-neg" />
                 </IconButton>
@@ -131,7 +134,7 @@ export default function Lancamentos() {
         {/* linha "adicionar" (estilo planilha) — oculta durante a busca */}
         {!q && (
           <button
-            onClick={openModal}
+            onClick={() => openModal()}
             className={`grid ${COLS} w-full items-center gap-3 border-b border-white/5 px-[18px] py-2.5 text-left text-sm text-ter transition hover:bg-white/[0.03]`}
           >
             <span className="font-mono">{doMes.length + 1}</span>

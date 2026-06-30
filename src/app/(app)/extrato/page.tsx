@@ -45,7 +45,7 @@ export default function Extrato() {
           title="Nada no extrato deste mês"
           description="Gastos confirmados como pagos aparecem aqui, agrupados por fonte."
           primaryLabel="+ Novo lançamento"
-          onPrimary={openModal}
+          onPrimary={() => openModal()}
         />
       </div>
     );

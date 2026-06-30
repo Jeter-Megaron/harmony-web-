@@ -122,13 +122,30 @@ export function computeCiclo(
     };
   }
 
-  // fallback (Salário): absorve todos os estouros; pode ficar negativo
+  // fallback (Salário): absorve os estouros de Benefício/Vale.
+  // Regra: antes de o Salário ficar negativo, a Renda avulsa (Outros) cobre o que puder;
+  // só quando Outros zera é que o Salário fica negativo.
   const ff = config.fontes.find((f) => f.id === fb)!;
   const dispFb = disponivel[fb];
-  const saidasFb = saidas[fb] + estouroTotal;
+  const saidasFbBase = saidas[fb] + estouroTotal; // saídas próprias do Salário + estouros recebidos
+  let saldoFb = dispFb - saidasFbBase;
+  let saidasReaisFb = saidasFbBase;
+
+  const outros = res['outros'];
+  let coberturaOutros = 0;
+  if (saldoFb < 0 && outros && outros.saldoFinal > 0) {
+    coberturaOutros = Math.min(-saldoFb, outros.saldoFinal);
+    outros.saidasReais += coberturaOutros;     // Outros pagou essa parte (transferência, não muda o total)
+    outros.recebidoFallback = coberturaOutros; // marca que Outros cobriu o Salário
+    outros.saldoFinal -= coberturaOutros;
+    saldoFb += coberturaOutros;                // Salário fica menos negativo (ou zera)
+    saidasReaisFb -= coberturaOutros;          // o que de fato saiu do Salário
+    alertas.push(`Renda avulsa cobriu R$ ${formatBR(coberturaOutros)} antes de o Salário ficar negativo.`);
+  }
+
   res[fb] = {
     id: fb, nome: ff.nome, disponivel: dispFb, saidasPretendidas: saidas[fb],
-    estouro: 0, recebidoFallback: estouroTotal, saidasReais: saidasFb, saldoFinal: dispFb - saidasFb,
+    estouro: 0, recebidoFallback: estouroTotal, saidasReais: saidasReaisFb, saldoFinal: saldoFb,
   };
 
   let totalEntradas = 0, totalSaidas = 0;

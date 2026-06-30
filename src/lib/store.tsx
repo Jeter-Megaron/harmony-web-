@@ -31,10 +31,12 @@ interface Store {
   ciclo: CicloResult;
   hydrated: boolean;
   modalOpen: boolean;
-  openModal: () => void;
+  editIndex: number | null;
+  openModal: (index?: number) => void;
   closeModal: () => void;
   setMesAtual: (m: string) => void;
   addLancamento: (l: Lancamento) => void;
+  editLancamento: (index: number, l: Lancamento) => void;
   removeLancamento: (index: number) => void;
   togglePago: (index: number) => void;
   // fontes / renda
@@ -63,6 +65,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [serverReady, setServerReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
   const userRef = useRef(user);
   userRef.current = user;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -181,10 +184,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     ciclo,
     hydrated,
     modalOpen,
-    openModal: () => setModalOpen(true),
-    closeModal: () => setModalOpen(false),
+    editIndex,
+    openModal: (i) => {
+      setEditIndex(typeof i === "number" ? i : null);
+      setModalOpen(true);
+    },
+    closeModal: () => {
+      setModalOpen(false);
+      setEditIndex(null);
+    },
     setMesAtual,
     addLancamento: (l) => setLancamentos((xs) => [...xs, l]),
+    editLancamento: (i, l) => setLancamentos((xs) => xs.map((x, idx) => (idx === i ? l : x))),
     removeLancamento: (i) => setLancamentos((xs) => xs.filter((_, idx) => idx !== i)),
     togglePago: (i) => setLancamentos((xs) => xs.map((l, idx) => (idx === i ? { ...l, pago: !l.pago } : l))),
     setFonteValor: (id, valor) => setConfig((c) => ({ ...c, fontes: c.fontes.map((f) => (f.id === id ? { ...f, entradaMensal: valor } : f)) })),

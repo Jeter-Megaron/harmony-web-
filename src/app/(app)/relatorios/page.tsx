@@ -69,7 +69,7 @@ export default function Relatorios() {
           title="Sem dados para relatórios"
           description="Registre a renda e os gastos do mês para ver os gráficos e o resumo."
           primaryLabel="+ Novo lançamento"
-          onPrimary={openModal}
+          onPrimary={() => openModal()}
         />
       </div>
     );

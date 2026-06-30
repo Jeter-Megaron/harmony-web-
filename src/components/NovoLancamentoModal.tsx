@@ -23,14 +23,21 @@ function mesLabel(iso: string) {
   return nome ? `${nome} ${y}` : iso;
 }
 
+function isoFromBR(br: string) {
+  const p = br.split("/");
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : new Date().toISOString().slice(0, 10);
+}
+
 export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
-  const { config, addLancamento, resolverFonte } = useHarmony();
-  const [descricao, setDescricao] = useState("");
-  const [valor, setValor] = useState("");
-  const [categoria, setCategoria] = useState(CATEGORIAS[0]);
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
-  const [override, setOverride] = useState<FonteId | "">("");
-  const [pago, setPago] = useState(false);
+  const { config, addLancamento, editLancamento, resolverFonte, editIndex, lancamentos } = useHarmony();
+  const editing = editIndex !== null;
+  const current = editIndex !== null ? lancamentos[editIndex] : null;
+  const [descricao, setDescricao] = useState(current?.descricao ?? "");
+  const [valor, setValor] = useState(current ? String(current.valor).replace(".", ",") : "");
+  const [categoria, setCategoria] = useState(current?.categoria ?? CATEGORIAS[0]);
+  const [data, setData] = useState(() => (current ? isoFromBR(current.data) : new Date().toISOString().slice(0, 10)));
+  const [override, setOverride] = useState<FonteId | "">(current?.fonteOverride ?? "");
+  const [pago, setPago] = useState(current?.pago ?? false);
 
   const regra = config.categorias.find((c) => c.categoria === categoria);
   const travada = !!(regra && regra.travada);
@@ -43,16 +50,18 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
 
   function salvar() {
     if (!canSave) return;
-    addLancamento({
+    const novo = {
       data: ddmm(data),
       mes: mesLabel(data),
       descricao: descricao.trim(),
       categoria,
       valor: valorNum,
-      tipo: "gasto",
+      tipo: "gasto" as const,
       pago,
       fonteOverride: travada ? undefined : override || undefined,
-    });
+    };
+    if (editIndex !== null) editLancamento(editIndex, novo);
+    else addLancamento(novo);
     onClose();
   }
 
@@ -62,7 +71,7 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
       {/* sem scroll: conteúdo compacto que sempre cabe na tela */}
       <div className="relative z-10 flex max-h-[96dvh] w-full max-w-[480px] flex-col rounded-2xl border border-white/10 bg-surface/90 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold">Novo lançamento</h2>
+          <h2 className="text-base font-bold">{editing ? "Editar lançamento" : "Novo lançamento"}</h2>
           <button onClick={onClose} aria-label="Fechar" className="grid h-7 w-7 place-items-center rounded-full bg-surface-2 text-sub hover:text-ink">
             <X size={15} />
           </button>
@@ -133,7 +142,7 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
             disabled={!canSave}
             className="rounded-lg bg-gradient-to-r from-[#5b3fd6] to-[#7e5bea] px-5 py-2 text-sm font-bold text-white shadow-[0_0_22px_rgba(139,108,255,0.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            Adicionar gasto
+            {editing ? "Salvar alterações" : "Adicionar gasto"}
           </button>
         </div>
       </div>
