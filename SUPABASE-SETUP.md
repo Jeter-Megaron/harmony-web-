@@ -1,41 +1,46 @@
-# Harmony — Supabase + Deploy (passo a passo)
+# Harmony — Supabase (persistência entre dispositivos)
 
-Arquitetura escolhida: **auth do Supabase** (e-mail/senha + Google) + **1 linha por usuário** com o
-estado do app em **JSONB** (casa com o store atual; protegido por RLS). Cliente roda no front com a
-**anon key** (pública). A `service_role` key **nunca** vai pro front.
+**Arquitetura:** autenticação é o **Clerk**. O Supabase guarda **1 linha por usuário** com o estado
+do app em **JSONB** (`config`, `lançamentos`, `rendaMes`, `mesAtual`). O banco é acessado **só pelo
+servidor** (Next.js Route Handler `/api/state`) usando a **service_role key**, scopeado pelo `userId`
+do Clerk. O navegador **nunca** fala direto com o Supabase, então a `service_role` (secreta) fica só
+no servidor. O `localStorage` vira apenas cache local pra não "piscar" vazio no carregamento.
 
 ## 1. Criar o projeto Supabase
-1. Acesse https://supabase.com → New project (free tier serve).
-2. Escolha nome/senha do banco e uma região (ex.: São Paulo).
+1. https://supabase.com → **New project** (free tier serve).
+2. Escolha nome, senha do banco e região (ex.: São Paulo).
 
 ## 2. Rodar o schema
 1. No projeto: **SQL Editor → New query**.
 2. Cole o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) e **Run**.
-   (Cria a tabela `harmony_state` com RLS por usuário.)
+   - Cria a tabela `harmony_state` com `user_id text` (id do Clerk), RLS ligado e **trancada**
+     (sem policies públicas — só a service_role enxerga).
 
-## 3. Habilitar autenticação
-1. **Authentication → Providers → Email**: deixe ligado (confirme se quer exigir verificação de e-mail).
-2. **Authentication → Providers → Google**: ligar e preencher o OAuth (Client ID/Secret do Google Cloud).
-   - Em produção, adicione a **Redirect URL** que o Supabase mostra ao app/Vercel.
-   - (Dá pra começar só com e-mail/senha e ligar o Google depois.)
-
-## 4. Pegar as chaves públicas
+## 3. Pegar as chaves
 **Project Settings → API**:
 - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-- **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **service_role** (em *Project API keys*, a secreta — clique em *Reveal*) → `SUPABASE_SERVICE_ROLE_KEY`
+  - ⚠️ É **secreta**: nunca cole em chat, nunca versione, nunca exponha no front.
 
-Copie o `.env.local.example` para `.env.local` e cole os valores (ou me mande que eu configuro):
+## 4. Local (.env.local)
+Copie o exemplo e preencha:
 ```
 cp .env.local.example .env.local
 ```
+Preencha `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (além das chaves do Clerk que já existem).
 
-## 5. Deploy na Vercel
-1. Suba o `harmony-web` para um repositório no GitHub.
-2. https://vercel.com → New Project → importe o repo (root = `gestao-financeira/harmony-web`).
-3. Em **Environment Variables**, adicione `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Deploy. (Depois, pegue a URL de produção e adicione nas Redirect URLs do Google no Supabase.)
+## 5. Vercel (produção)
+**Project → Settings → Environment Variables** (marque *Production*, *Preview* e *Development*):
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-## O que falta no código (faço quando você me passar URL + anon key)
-- Trocar o auth-stub local pelo **Supabase Auth** real (login/cadastro/Google/logout).
-- Sincronizar o store com `harmony_state` (carrega no login, salva ao alterar; localStorage vira cache).
-- Testar o fluxo conectado e então publicar.
+Depois **Redeploy**. (As chaves do Clerk já devem estar lá da etapa anterior.)
+
+## Como funciona no código
+- `supabase/schema.sql` — tabela + RLS trancada.
+- `src/lib/supabase-server.ts` — client server-only com a service_role (`import "server-only"`).
+- `src/app/api/state/route.ts` — `GET` lê / `POST` grava o estado do usuário autenticado (Clerk `auth()`).
+- `src/lib/store.tsx` — no login busca `/api/state`; ao alterar dados, faz `POST` (debounced). localStorage = cache.
+
+> Se as variáveis do Supabase não estiverem setadas, o app **continua funcionando** só com o cache
+> local (sem sincronizar entre dispositivos) — `/api/state` responde `{ disabled: true }`.

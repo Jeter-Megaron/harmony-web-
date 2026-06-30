@@ -67,31 +67,55 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   userRef.current = user;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // carrega o estado do usuário: metadados do Clerk (fonte da verdade) → cache local → semente
+  // carrega o estado: cache local (pintura instantânea) → Supabase via /api/state (fonte da verdade entre dispositivos)
   useEffect(() => {
     if (!isLoaded) return;
-    if (user && !serverReady) {
-      let saved = user.unsafeMetadata?.harmony as SavedState | undefined;
-      if (!saved) {
-        try {
-          const raw = localStorage.getItem(`${KEY}-${user.id}`);
-          if (raw) saved = JSON.parse(raw) as SavedState;
-        } catch {
-          /* ignore */
-        }
-      }
-      if (saved && typeof saved === "object") {
-        if (saved.config) setConfig(saved.config);
-        if (saved.lancamentos) setLancamentos(normLanc(saved.lancamentos));
-        if (saved.rendaMes) setRendaMes(saved.rendaMes);
-        if (saved.mesAtual) setMesAtual(saved.mesAtual);
-      }
-      setServerReady(true);
+    if (!user) {
+      setHydrated(true);
+      return;
     }
-    setHydrated(true);
+    if (serverReady) return;
+
+    const apply = (saved: SavedState | null | undefined) => {
+      if (!saved || typeof saved !== "object") return;
+      if (saved.config) setConfig(saved.config);
+      if (saved.lancamentos) setLancamentos(normLanc(saved.lancamentos));
+      if (saved.rendaMes) setRendaMes(saved.rendaMes);
+      if (saved.mesAtual) setMesAtual(saved.mesAtual);
+    };
+
+    // 1) cache local por usuário — evita "piscar" vazio enquanto o servidor responde
+    try {
+      const raw = localStorage.getItem(`${KEY}-${user.id}`);
+      if (raw) apply(JSON.parse(raw) as SavedState);
+    } catch {
+      /* ignore */
+    }
+
+    // 2) servidor (Supabase) — vence o cache local, sincroniza entre dispositivos
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/state");
+        if (res.ok) {
+          const json = (await res.json()) as { state?: SavedState | null };
+          if (!cancelled && json?.state) apply(json.state);
+        }
+      } catch {
+        /* offline / sem supabase: segue com o cache local */
+      }
+      if (!cancelled) {
+        setServerReady(true);
+        setHydrated(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, user, serverReady]);
 
-  // salva (debounced) nos metadados do Clerk + cache local por usuário
+  // salva: cache local imediato + POST debounced p/ o Supabase (/api/state)
   useEffect(() => {
     if (!hydrated || !serverReady) return;
     const u = userRef.current;
@@ -104,9 +128,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      const uu = userRef.current;
-      void uu?.update({ unsafeMetadata: { ...(uu.unsafeMetadata ?? {}), harmony: snapshot } }).catch(() => {});
-    }, 1200);
+      void fetch("/api/state", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ state: snapshot }),
+      }).catch(() => {});
+    }, 1000);
   }, [config, lancamentos, rendaMes, mesAtual, hydrated, serverReady]);
 
   // config efetiva do mês: entradaMensal = override do mês, senão padrão (se repete) ou 0

@@ -1,30 +1,21 @@
--- Harmony — schema do Supabase
+-- Harmony — schema do Supabase (auth = Clerk)
 -- Abordagem: 1 linha por usuário com o estado do app em JSONB (config, lançamentos,
--- rendaMes, mesAtual). Simples, casa com o store atual e protegido por RLS.
+-- rendaMes, mesAtual). O acesso é SÓ pelo servidor (Next.js Route Handler /api/state)
+-- usando a service_role key, scopeado pelo userId do Clerk. O navegador nunca toca no banco.
 -- Rode este SQL no Supabase: SQL Editor → New query → Run.
 
 create table if not exists public.harmony_state (
-  user_id    uuid primary key references auth.users(id) on delete cascade,
+  user_id    text primary key,        -- id do usuário no Clerk (ex.: user_2abc...)
   state      jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 
+-- Tranca a tabela: RLS ligado e SEM policies públicas.
+-- A service_role (usada só no servidor) ignora RLS; anon/authenticated não enxergam nada.
 alter table public.harmony_state enable row level security;
+revoke all on public.harmony_state from anon, authenticated;
 
--- cada usuário só enxerga/edita o próprio estado
-drop policy if exists "harmony_state_select_own" on public.harmony_state;
-create policy "harmony_state_select_own" on public.harmony_state
-  for select using (auth.uid() = user_id);
-
-drop policy if exists "harmony_state_insert_own" on public.harmony_state;
-create policy "harmony_state_insert_own" on public.harmony_state
-  for insert with check (auth.uid() = user_id);
-
-drop policy if exists "harmony_state_update_own" on public.harmony_state;
-create policy "harmony_state_update_own" on public.harmony_state
-  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- atualiza updated_at automaticamente
+-- atualiza updated_at automaticamente em cada UPDATE
 create or replace function public.harmony_touch_updated_at()
 returns trigger language plpgsql as $$
 begin
