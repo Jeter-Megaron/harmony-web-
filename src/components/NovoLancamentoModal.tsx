@@ -28,14 +28,26 @@ function isoFromBR(br: string) {
   return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : new Date().toISOString().slice(0, 10);
 }
 
+// Data padrão de um lançamento novo = dentro do mês que está selecionado (mesAtual),
+// para o lançamento aparecer no mês que o usuário está vendo.
+function isoForMes(mes: string) {
+  const [nome, ano] = mes.split(" ");
+  const mi = MES_NOMES.indexOf(nome);
+  const y = Number(ano);
+  if (mi < 0 || !y) return new Date().toISOString().slice(0, 10);
+  const hoje = new Date();
+  const dia = hoje.getFullYear() === y && hoje.getMonth() === mi ? hoje.getDate() : 1;
+  return `${y}-${String(mi + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
 export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
-  const { config, addLancamento, editLancamento, resolverFonte, editIndex, lancamentos } = useHarmony();
+  const { config, addLancamento, editLancamento, resolverFonte, editIndex, lancamentos, mesAtual } = useHarmony();
   const editing = editIndex !== null;
   const current = editIndex !== null ? lancamentos[editIndex] : null;
   const [descricao, setDescricao] = useState(current?.descricao ?? "");
   const [valor, setValor] = useState(current ? String(current.valor).replace(".", ",") : "");
   const [categoria, setCategoria] = useState(current?.categoria ?? CATEGORIAS[0]);
-  const [data, setData] = useState(() => (current ? isoFromBR(current.data) : new Date().toISOString().slice(0, 10)));
+  const [data, setData] = useState(() => (current ? isoFromBR(current.data) : isoForMes(mesAtual)));
   const [override, setOverride] = useState<FonteId | "">(current?.fonteOverride ?? "");
   const [pago, setPago] = useState(current?.pago ?? false);
 
@@ -93,6 +105,9 @@ export function NovoLancamentoModal({ onClose }: { onClose: () => void }) {
               <input type="date" className={`mt-1 ${inputCls}`} value={data} onChange={(e) => setData(e.target.value)} />
             </label>
           </div>
+          <p className="text-[10px] text-ter">
+            Entra no mês de <span className="font-medium text-sub">{mesLabel(data)}</span> — o mesmo que você seleciona lá em cima.
+          </p>
 
           <label className="block">
             <span className="text-[11px] font-medium text-sub">Categoria</span>

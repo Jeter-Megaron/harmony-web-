@@ -35,7 +35,9 @@ export const CATEGORIAS: string[] = [
 const MES_NOMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 // Meses selecionáveis em todos os campos (renda, lançamentos, filtros).
 export const MESES: string[] = [2025, 2026, 2027].flatMap((ano) => MES_NOMES.map((m) => `${m} ${ano}`));
-export const MES_ATUAL = "Junho 2026";
+// Mês padrão = o mês atual de verdade (evita cair num mês fixo do passado).
+const _hoje = new Date();
+export const MES_ATUAL = `${MES_NOMES[_hoje.getMonth()]} ${_hoje.getFullYear()}`;
 
 // Sem renda cadastrada (o usuário cadastra na página Renda).
 export const rendaMes: Record<string, Partial<Record<FonteId, number>>> = {};
